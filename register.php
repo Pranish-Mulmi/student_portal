@@ -1,24 +1,32 @@
 <?php
-include 'db.php';
+    require_once "db.php";
+    session_start();
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $student_id = $_POST['student_id'];
-    $name       = $_POST['name'];
-    $password   = $_POST['password'];
+    $message = "";
 
-    $hash = password_hash($password, PASSWORD_BCRYPT);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $student_id = trim($_POST['student_id']);
+        $full_name  = trim($_POST['full_name']);
+        $password   = $_POST['password'];
 
-    $stmt = $conn->prepare("INSERT INTO students (student_id, full_name, password_hash) VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $student_id, $name, $hash);
+        if ($student_id && $full_name && $password) {
+            $hash = password_hash($password, PASSWORD_BCRYPT);
 
-    if ($stmt->execute()) {
-        header("Location: login.php");
-        exit();
-    } else {
-        echo "Error: " . $stmt->error;
+            try {
+                $stmt = $conn->prepare("INSERT INTO students (student_id, full_name, password_hash) VALUES (?, ?, ?)");
+                $stmt->execute([$student_id, $full_name, $hash]);
+                header("Location: login.php?registered=1");
+                exit;
+            } catch (PDOException $e) {
+                $message = "Error: " . $e->getMessage();
+            }
+        } else {
+            $message = "All fields are required.";
+        }
     }
-}
+
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,15 +34,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Register</title>
 </head>
 <body>
-<div class="container">
-    <h2>Student Registration</h2>
+    <h2>Register</h2>
+    <?php if ($message): ?><p class="notice"><?= htmlspecialchars($message) ?></p><?php endif; ?>
     <form method="POST">
-        <input type="text" name="student_id" placeholder="Student ID" required>
-        <input type="text" name="name" placeholder="Full Name" required>
-        <input type="password" name="password" placeholder="Password" required>
+        <label>Student ID</label>
+        <input type="text" name="student_id" required>
+        <label>Full Name</label>
+        <input type="text" name="full_name" required>
+        <label>Password</label>
+        <input type="password" name="password" required>
         <button type="submit">Register</button>
     </form>
-    <p>Already registered? <a href="login.php">Login here</a></p>
+    <p><a href="login.php">Already registered? Login</a></p>
+
 </div>
 </body>
 </html>
